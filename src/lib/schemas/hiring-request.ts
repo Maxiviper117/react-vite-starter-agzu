@@ -13,7 +13,7 @@ const optionalUrl = z.union([
 ]).optional()
 
 export const roleEntrySchema = z.object({
-  jobTitle: optionalText,
+  jobTitle: z.string().trim().min(1, 'Job title is required'),
   requiredSoftwareTools: optionalText,
   otherRequiredSoftwareTools: optionalText,
   hoursOfOperation: optionalText,
@@ -34,12 +34,11 @@ export const hiringRequestSchema = z.object({
   lastName: optionalText,
   phone: optionalText,
   email: z
-    .string()
+    .email('Please enter a valid email address')
     .trim()
-    .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
+    .min(1, 'Email is required'),
   secondaryEmail: optionalEmail,
-  roles: z.array(roleEntrySchema).min(1, 'Add at least one role'),
+  roles: z.array(roleEntrySchema),
   traits: optionalText,
   outsourced: optionalText,
   additionalDetails: optionalText,

@@ -12,40 +12,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { RoleDialog } from "@/components/role-dialog";
 import {
   type HiringRequestFormInput,
   type RoleEntry,
   hiringRequestSchema,
 } from "@/lib/schemas/hiring-request";
-
-const softwareToolOptions = ["Excel", "CAD", "QuickBooks", "Zoho", "Other"] as const;
-
-const defaultRole: RoleEntry = {
-  jobTitle: "",
-  requiredSoftwareTools: "",
-  otherRequiredSoftwareTools: "",
-  hoursOfOperation: "",
-  jobExperienceRequirements: "",
-  numberOfEmployeesNeeded: 1,
-};
 
 function numberOfEmployeesLabel(count: number) {
   return count === 1 ? "1 role required" : `${count} roles required`;
@@ -55,9 +30,13 @@ function App() {
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(
     null,
   );
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number>(-1);
-  const [draftRole, setDraftRole] = useState<RoleEntry>(defaultRole);
+  const [editingRole, setEditingRole] = useState<
+    { index: number; role: RoleEntry } | { index: -1; role?: undefined } | null
+  >(null);
+  const [serverErrors, setServerErrors] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [success, setSuccess] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -68,7 +47,7 @@ function App() {
       phone: "",
       email: "",
       secondaryEmail: "",
-      roles: [defaultRole],
+      roles: [],
       traits: "",
       outsourced: "",
       additionalDetails: "",
@@ -77,11 +56,17 @@ function App() {
       onChange: hiringRequestSchema,
     },
     onSubmit: ({ value }) => {
-      setSubmissionMessage(
-        `Validated locally with Zod. ${value.roles.length} role request${value.roles.length === 1 ? "" : "s"} ready to submit.`,
-      );
+      setServerErrors({});
+      setSuccess(false);
 
       console.info("Validated hiring request payload:", value);
+
+      // TODO submit the validated payload to the server or an API route here. You can use fetch.
+
+      setSuccess(true);
+      setSubmissionMessage(
+        `${value.roles.length} role request${value.roles.length === 1 ? "" : "s"} ready to submit.`,
+      );
     },
   });
 
@@ -99,35 +84,39 @@ function App() {
   };
 
   const openNewRole = () => {
-    setDraftRole({ ...defaultRole });
-    setEditingIndex(-1);
-    setDialogOpen(true);
+    setEditingRole({ index: -1 });
   };
 
   const openEditRole = (index: number, role: RoleEntry) => {
-    setDraftRole({ ...role });
-    setEditingIndex(index);
-    setDialogOpen(true);
+    setEditingRole({ index, role });
   };
 
-  const handleSaveRole = (pushValue: (value: RoleEntry) => void) => {
-    if (editingIndex === -1) {
-      pushValue(draftRole);
+  const handleSaveRole = (
+    role: RoleEntry,
+    pushValue: (value: RoleEntry) => void,
+  ) => {
+    if (!editingRole) return;
+    if (editingRole.index === -1) {
+      pushValue(role);
     } else {
-      form.setFieldValue(`roles[${editingIndex}]`, draftRole);
+      form.setFieldValue(`roles[${editingRole.index}]`, role);
     }
-    setDialogOpen(false);
+    setEditingRole(null);
   };
 
   return (
-    <main className="min-h-screen bg-[#cad3f0] px-4 py-10 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#cad3f0]/50 px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 ">
-        <div className="flex justify-center">
+        <div className="flex-col justify-center items-center space-y-6 rounded-lg bg-white/80 p-8 shadow-md ">
           <img
             src={reworksLogo}
             alt="Reworks Solutions"
-            className="h-auto w-64 sm:w-80"
+            className="h-auto max-w-2xl w-full"
           />
+          <h2 className="text-center text-lg text-muted-foreground">
+            Thank you for choosing Reworks Solutions! Please fill out the form
+            below to help us find the right candidates for your business
+          </h2>
         </div>
 
         <form
@@ -140,7 +129,9 @@ function App() {
         >
           <Card className="shadow-sm p-4">
             <CardHeader className="border-b border-border/60 pb-6 ">
-              <CardTitle>Business and contact details</CardTitle>
+              <CardTitle className="text-2xl">
+                Business and contact details
+              </CardTitle>
               <CardDescription>
                 Tell us who you are and how we should follow up.
               </CardDescription>
@@ -151,13 +142,14 @@ function App() {
                 <form.Field name="businessName">
                   {(field) => (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="businessName">
+                      <Label htmlFor="businessName" className="text-lg">
                         Business Name{" "}
                         <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="businessName"
                         name={field.name}
+                        className="h-11 text-lg!"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
@@ -171,10 +163,13 @@ function App() {
                 <form.Field name="businessWebsite">
                   {(field) => (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="businessWebsite" className="text-lg">Business Website</Label>
+                      <Label htmlFor="businessWebsite" className="text-lg">
+                        Business Website
+                      </Label>
                       <Input
                         id="businessWebsite"
                         name={field.name}
+                        className="h-11 text-lg!"
                         placeholder="https://"
                         type="url"
                         value={field.state.value}
@@ -190,10 +185,13 @@ function App() {
                 <form.Field name="firstName">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
+                      <Label htmlFor="firstName" className="text-lg">
+                        First Name
+                      </Label>
                       <Input
                         id="firstName"
                         name={field.name}
+                        className="h-11 text-lg!"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
@@ -207,10 +205,13 @@ function App() {
                 <form.Field name="lastName">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="lastName" className="text-lg">
+                        Last Name
+                      </Label>
                       <Input
                         id="lastName"
                         name={field.name}
+                        className="h-11 text-lg!"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
@@ -224,10 +225,13 @@ function App() {
                 <form.Field name="phone">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
+                      <Label htmlFor="phone" className="text-lg">
+                        Phone
+                      </Label>
                       <Input
                         id="phone"
                         name={field.name}
+                        className="h-11 text-lg!"
                         type="tel"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -242,12 +246,13 @@ function App() {
                 <form.Field name="email">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="email">
+                      <Label htmlFor="email" className="text-lg">
                         Email <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="email"
                         name={field.name}
+                        className="h-11 text-lg!"
                         type="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -262,10 +267,13 @@ function App() {
                 <form.Field name="secondaryEmail">
                   {(field) => (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="secondaryEmail">Secondary Email</Label>
+                      <Label htmlFor="secondaryEmail" className="text-lg">
+                        Secondary Email
+                      </Label>
                       <Input
                         id="secondaryEmail"
                         name={field.name}
+                        className="h-11 text-lg!"
                         type="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -282,7 +290,7 @@ function App() {
 
           <Card className="shadow-sm p-4">
             <CardHeader className="border-b border-border/60 pb-6">
-              <CardTitle>Job details</CardTitle>
+              <CardTitle className="text-2xl">Job details</CardTitle>
               <CardDescription>
                 Provide the role details and anything else that would help us
                 understand the hire.
@@ -293,7 +301,7 @@ function App() {
               <form.Field name="traits">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="traits">
+                    <Label htmlFor="traits" className="text-lg">
                       Are there specific personality traits or characteristics
                       you prefer in a candidate?
                     </Label>
@@ -314,7 +322,7 @@ function App() {
               <form.Field name="outsourced">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="outsourced">
+                    <Label htmlFor="outsourced" className="text-lg">
                       Have you outsourced in the past? If so, what worked or
                       didn't work for you?
                     </Label>
@@ -335,7 +343,7 @@ function App() {
               <form.Field name="additionalDetails">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="additionalDetails">
+                    <Label htmlFor="additionalDetails" className="text-lg">
                       Are there any additional details or requirements you'd
                       like to share?
                     </Label>
@@ -359,7 +367,7 @@ function App() {
             <CardHeader className="border-b border-border/60 pb-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle>Roles</CardTitle>
+                  <CardTitle className="text-2xl">Roles</CardTitle>
                   <CardDescription>
                     Add the roles you want to fill.
                   </CardDescription>
@@ -381,18 +389,10 @@ function App() {
               <form.Field name="roles" mode="array">
                 {(field) => {
                   const roles = field.state.value;
-                  const roleErrorMessage =
-                    field.state.meta.errors.length > 0
-                      ? field.state.meta.errors.join(", ")
-                      : null;
 
                   return (
                     <div className="space-y-3">
-                      {roleErrorMessage ? (
-                        <p className="text-sm text-destructive">
-                          {roleErrorMessage}
-                        </p>
-                      ) : null}
+                      {renderFieldError(field.state.meta.errors)}
 
                       {roles.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -423,7 +423,6 @@ function App() {
                                     </Button>
                                     <Button
                                       aria-label={`Remove role ${index + 1}`}
-                                      disabled={roles.length === 1}
                                       type="button"
                                       variant="ghost"
                                       size="icon"
@@ -446,153 +445,15 @@ function App() {
                         </div>
                       )}
 
-                      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                        <DialogContent className="max-w-lg">
-                          <DialogHeader>
-                            <DialogTitle>
-                              {editingIndex === -1 ? "Add Role" : "Edit Role"}
-                            </DialogTitle>
-                            <DialogDescription>
-                              Fill out the job details for this role.
-                            </DialogDescription>
-                          </DialogHeader>
-
-                          <div className="grid gap-4 py-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="draft-jobTitle">Job Title</Label>
-                              <Input
-                                id="draft-jobTitle"
-                                value={draftRole.jobTitle}
-                                onChange={(e) =>
-                                  setDraftRole((r) => ({
-                                    ...r,
-                                    jobTitle: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="draft-requiredSoftwareTools">
-                                Required Software & Tools
-                              </Label>
-                              <Select
-                                value={draftRole.requiredSoftwareTools}
-                                onValueChange={(v) =>
-                                  setDraftRole((r) => ({
-                                    ...r,
-                                    requiredSoftwareTools: v,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger
-                                  id="draft-requiredSoftwareTools"
-                                  className="w-full"
-                                >
-                                  <SelectValue placeholder="-Select-" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {softwareToolOptions.map((option) => (
-                                    <SelectItem key={option} value={option}>
-                                      {option}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="draft-otherRequiredSoftwareTools">
-                                Other Required Software & Tools
-                              </Label>
-                              <Textarea
-                                id="draft-otherRequiredSoftwareTools"
-                                rows={3}
-                                placeholder="Please add Required Software & Tools here in comma separated list if field above does not include desired options."
-                                value={draftRole.otherRequiredSoftwareTools}
-                                onChange={(e) =>
-                                  setDraftRole((r) => ({
-                                    ...r,
-                                    otherRequiredSoftwareTools: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="draft-hoursOfOperation">
-                                Hours of Operation (EST)
-                              </Label>
-                              <Input
-                                id="draft-hoursOfOperation"
-                                placeholder="(e.g., Mon to Friday 9am - 5pm EST)"
-                                value={draftRole.hoursOfOperation}
-                                onChange={(e) =>
-                                  setDraftRole((r) => ({
-                                    ...r,
-                                    hoursOfOperation: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="draft-jobExperienceRequirements">
-                                Job Experience Requirements
-                              </Label>
-                              <Input
-                                id="draft-jobExperienceRequirements"
-                                placeholder="(e.g., experience in customer service, bookkeeping, e-commerce)"
-                                value={draftRole.jobExperienceRequirements}
-                                onChange={(e) =>
-                                  setDraftRole((r) => ({
-                                    ...r,
-                                    jobExperienceRequirements: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="draft-numberOfEmployeesNeeded">
-                                Number of Employees Needed
-                              </Label>
-                              <Input
-                                id="draft-numberOfEmployeesNeeded"
-                                min={1}
-                                step={1}
-                                type="number"
-                                value={draftRole.numberOfEmployeesNeeded}
-                                onChange={(e) =>
-                                  setDraftRole((r) => ({
-                                    ...r,
-                                    numberOfEmployeesNeeded:
-                                      e.target.value === ""
-                                        ? 1
-                                        : e.target.valueAsNumber,
-                                  }))
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          <DialogFooter>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setDialogOpen(false)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={() => handleSaveRole(field.pushValue)}
-                            >
-                              Save role
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <RoleDialog
+                        open={editingRole !== null}
+                        onOpenChange={(open) => {
+                          if (!open) setEditingRole(null);
+                        }}
+                        initialRole={editingRole?.role}
+                        isEditing={editingRole?.index !== -1}
+                        onSave={(role) => handleSaveRole(role, field.pushValue)}
+                      />
                     </div>
                   );
                 }}
@@ -608,7 +469,7 @@ function App() {
             <form.Subscribe selector={(state) => [state.isSubmitting]}>
               {([isSubmitting]) => (
                 <Button
-                  className="w-full max-w-xs py-6 text-lg"
+                  className="w-full max-w-xs py-6 text-lg bg-[#1d88c2]"
                   disabled={isSubmitting}
                   type="submit"
                 >
