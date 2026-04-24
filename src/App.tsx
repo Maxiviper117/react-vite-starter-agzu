@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Pencil, Plus, SendHorizonal, Trash2 } from "lucide-react";
+import { Briefcase, Pencil, Plus, SendHorizonal, Trash2 } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import type { StandardSchemaV1Issue } from "@tanstack/form-core";
+import { toast } from "sonner";
 
 import reworksLogo from "@/assets/Reworks-Logo.png";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 import {
   Card,
   CardContent,
@@ -26,6 +28,10 @@ function numberOfEmployeesLabel(count: number) {
   return count === 1 ? "1 role required" : `${count} roles required`;
 }
 
+function capitalizeFirstLetter(value: string) {
+  return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : value;
+}
+
 function App() {
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(
     null,
@@ -33,10 +39,6 @@ function App() {
   const [editingRole, setEditingRole] = useState<
     { index: number; role: RoleEntry } | { index: -1; role?: undefined } | null
   >(null);
-  const [serverErrors, setServerErrors] = useState<Record<string, string[]>>(
-    {},
-  );
-  const [success, setSuccess] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -56,14 +58,10 @@ function App() {
       onChange: hiringRequestSchema,
     },
     onSubmit: ({ value }) => {
-      setServerErrors({});
-      setSuccess(false);
-
       console.info("Validated hiring request payload:", value);
 
       // TODO submit the validated payload to the server or an API route here. You can use fetch.
 
-      setSuccess(true);
       setSubmissionMessage(
         `${value.roles.length} role request${value.roles.length === 1 ? "" : "s"} ready to submit.`,
       );
@@ -121,9 +119,16 @@ function App() {
 
         <form
           className="space-y-8"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             e.stopPropagation();
+            await form.validateAllFields("submit");
+            if (!form.state.isValid) {
+              toast.error(
+                "Please fix the errors in the form before submitting.",
+              );
+              return;
+            }
             form.handleSubmit();
           }}
         >
@@ -142,14 +147,17 @@ function App() {
                 <form.Field name="businessName">
                   {(field) => (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="businessName" className="text-lg">
+                      <Label
+                        htmlFor="businessName"
+                        className="text-lg text-muted-foreground"
+                      >
                         Business Name{" "}
                         <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="businessName"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
@@ -163,13 +171,16 @@ function App() {
                 <form.Field name="businessWebsite">
                   {(field) => (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="businessWebsite" className="text-lg">
+                      <Label
+                        htmlFor="businessWebsite"
+                        className="text-lg text-muted-foreground"
+                      >
                         Business Website
                       </Label>
                       <Input
                         id="businessWebsite"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         placeholder="https://"
                         type="url"
                         value={field.state.value}
@@ -185,13 +196,16 @@ function App() {
                 <form.Field name="firstName">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-lg">
+                      <Label
+                        htmlFor="firstName"
+                        className="text-lg text-muted-foreground"
+                      >
                         First Name
                       </Label>
                       <Input
                         id="firstName"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
@@ -205,13 +219,16 @@ function App() {
                 <form.Field name="lastName">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-lg">
+                      <Label
+                        htmlFor="lastName"
+                        className="text-lg text-muted-foreground"
+                      >
                         Last Name
                       </Label>
                       <Input
                         id="lastName"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
@@ -225,13 +242,16 @@ function App() {
                 <form.Field name="phone">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-lg">
+                      <Label
+                        htmlFor="phone"
+                        className="text-lg text-muted-foreground"
+                      >
                         Phone
                       </Label>
                       <Input
                         id="phone"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         type="tel"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -246,13 +266,16 @@ function App() {
                 <form.Field name="email">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-lg">
+                      <Label
+                        htmlFor="email"
+                        className="text-lg text-muted-foreground"
+                      >
                         Email <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="email"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         type="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -267,13 +290,16 @@ function App() {
                 <form.Field name="secondaryEmail">
                   {(field) => (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="secondaryEmail" className="text-lg">
+                      <Label
+                        htmlFor="secondaryEmail"
+                        className="text-lg text-muted-foreground"
+                      >
                         Secondary Email
                       </Label>
                       <Input
                         id="secondaryEmail"
                         name={field.name}
-                        className="h-11 text-lg!"
+                        className="h-11 text-lg! bg-gray-100/50"
                         type="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -301,13 +327,17 @@ function App() {
               <form.Field name="traits">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="traits" className="text-lg">
+                    <Label
+                      htmlFor="traits"
+                      className="text-lg text-muted-foreground"
+                    >
                       Are there specific personality traits or characteristics
                       you prefer in a candidate?
                     </Label>
                     <Textarea
                       id="traits"
                       name={field.name}
+                      className="bg-gray-100/50 text-[1.0rem]!"
                       rows={4}
                       value={field.state.value}
                       onBlur={field.handleBlur}
@@ -322,13 +352,17 @@ function App() {
               <form.Field name="outsourced">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="outsourced" className="text-lg">
+                    <Label
+                      htmlFor="outsourced"
+                      className="text-lg text-muted-foreground"
+                    >
                       Have you outsourced in the past? If so, what worked or
                       didn't work for you?
                     </Label>
                     <Textarea
                       id="outsourced"
                       name={field.name}
+                      className="bg-gray-100/50 text-[1.0rem]!"
                       rows={4}
                       value={field.state.value}
                       onBlur={field.handleBlur}
@@ -343,13 +377,17 @@ function App() {
               <form.Field name="additionalDetails">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="additionalDetails" className="text-lg">
+                    <Label
+                      htmlFor="additionalDetails"
+                      className="text-lg text-muted-foreground"
+                    >
                       Are there any additional details or requirements you'd
                       like to share?
                     </Label>
                     <Textarea
                       id="additionalDetails"
                       name={field.name}
+                      className="bg-gray-100/50 text-[1.0rem]!"
                       rows={4}
                       value={field.state.value}
                       onBlur={field.handleBlur}
@@ -399,7 +437,7 @@ function App() {
                           No roles added yet. Click "Add role" to get started.
                         </p>
                       ) : (
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-3">
                           {roles.map((role, index) => {
                             const r = role as RoleEntry;
                             return (
@@ -408,9 +446,16 @@ function App() {
                                 className="flex flex-col gap-3 rounded-lg border border-border/60 bg-background p-4"
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <h3 className="text-sm font-semibold text-foreground">
-                                    {r.jobTitle || `Role ${index + 1}`}
-                                  </h3>
+                                  <div className="flex items-center gap-3">
+                                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                      <Briefcase className="h-4 w-4" />
+                                    </span>
+                                    <h3 className="text-base font-semibold text-foreground">
+                                      {r.jobTitle
+                                        ? capitalizeFirstLetter(r.jobTitle)
+                                        : `Role ${index + 1}`}
+                                    </h3>
+                                  </div>
                                   <div className="flex items-center gap-1">
                                     <Button
                                       type="button"
@@ -426,7 +471,7 @@ function App() {
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7"
+                                      className="h-7 w-7 text-muted-foreground transition-colors hover:text-destructive"
                                       onClick={() => field.removeValue(index)}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
@@ -485,6 +530,7 @@ function App() {
           </div>
         </form>
       </div>
+      <Toaster />
     </main>
   );
 }
